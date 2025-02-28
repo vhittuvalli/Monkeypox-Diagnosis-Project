@@ -6,6 +6,55 @@ function App() {
   const [confidence, setConfidence] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Inline style objects
+  const containerStyle = {
+    maxWidth: "600px",
+    margin: "2rem auto",
+    padding: "2rem",
+    backgroundColor: "#f9f9f9",
+    borderRadius: "8px",
+    boxShadow: "0 2px 5px rgba(0, 0, 0, 0.1)",
+    fontFamily: "Arial, sans-serif",
+    textAlign: "center",
+  };
+
+  const headingStyle = {
+    marginTop: 0,
+    marginBottom: "1rem",
+    fontSize: "1.8rem",
+    color: "#333",
+  };
+
+  const buttonStyle = {
+    backgroundColor: "#007bff",
+    color: "#fff",
+    border: "none",
+    padding: "0.6rem 1.2rem",
+    borderRadius: "4px",
+    cursor: "pointer",
+    margin: "0.5rem",
+  };
+
+  const formStyle = {
+    marginTop: "1rem",
+    marginBottom: "1rem",
+  };
+
+  const errorMsgStyle = {
+    color: "red",
+    marginTop: "1rem",
+  };
+
+  const resultContainerStyle = {
+    marginTop: "1.5rem",
+    backgroundColor: "#fff",
+    padding: "1rem",
+    borderRadius: "6px",
+    border: "1px solid #ddd",
+    display: "inline-block",
+    textAlign: "left",
+  };
+
   // Handle file selection
   const handleFileChange = (e) => {
     setSelectedFile(e.target.files[0]);
@@ -41,7 +90,6 @@ function App() {
       const formData = new FormData();
       formData.append("file", selectedFile);
 
-      // Use a relative path -> CRA dev server proxies to Flask
       const response = await fetch("/predict", {
         method: "POST",
         body: formData,
@@ -61,17 +109,29 @@ function App() {
   };
 
   return (
-    <div style={{ margin: "2rem" }}>
-      <h1>Monkeypox Detection Demo</h1>
-      <button onClick={handleTest}>Test /test route</button>
-      <br /><br />
-      <form onSubmit={handleSubmit}>
-        <input type="file" accept="image/*" onChange={handleFileChange} />
-        <button type="submit">Predict</button>
+    <div style={containerStyle}>
+      <h1 style={headingStyle}>Monkeypox Detection Demo</h1>
+
+      <button onClick={handleTest} style={buttonStyle}>
+        Test /test route
+      </button>
+
+      <form onSubmit={handleSubmit} style={formStyle}>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          style={{ marginRight: "0.5rem" }}
+        />
+        <button type="submit" style={buttonStyle}>
+          Predict
+        </button>
       </form>
-      {errorMsg && <p style={{ color: "red" }}>{errorMsg}</p>}
+
+      {errorMsg && <p style={errorMsgStyle}>{errorMsg}</p>}
+
       {prediction && (
-        <div>
+        <div style={resultContainerStyle}>
           <h2>Prediction: {prediction}</h2>
           <p>Confidence: {confidence}%</p>
         </div>
