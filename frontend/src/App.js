@@ -8,6 +8,7 @@ function App() {
   const [errorMsg, setErrorMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [fadeIn, setFadeIn] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
 
   const styles = {
     page: {
@@ -60,9 +61,6 @@ function App() {
     resetButton: {
       backgroundColor: "#6c757d",
     },
-    buttonHover: {
-      backgroundColor: "#0056b3",
-    },
     previewImage: {
       maxWidth: "100%",
       maxHeight: "300px",
@@ -95,6 +93,12 @@ function App() {
       color: "red",
       marginTop: "1rem",
     },
+    toggleRow: {
+      marginTop: "1rem",
+      display: "flex",
+      alignItems: "center",
+      gap: "0.5rem",
+    },
   };
 
   const handleFileChange = (e) => {
@@ -105,6 +109,20 @@ function App() {
     setConfidence(null);
     setErrorMsg("");
     setFadeIn(true);
+  };
+
+  const speakResult = (prediction, confidence) => {
+    if (!voiceEnabled || !window.speechSynthesis) return;
+    let message = "";
+
+    if (prediction === "Monkeypox") {
+      message = `Warning. Monkeypox detected with ${confidence} percent confidence. Please consult a healthcare provider.`;
+    } else {
+      message = `Monkeypox not detected. Confidence level is ${confidence} percent.`;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(message);
+    window.speechSynthesis.speak(utterance);
   };
 
   const handleSubmit = async (e) => {
@@ -135,6 +153,7 @@ function App() {
       const data = await response.json();
       setPrediction(data.prediction);
       setConfidence(data.confidence);
+      speakResult(data.prediction, data.confidence);
     } catch (err) {
       setErrorMsg("Server error: " + err.message);
     } finally {
@@ -177,6 +196,17 @@ function App() {
               Reset
             </button>
           </form>
+
+          {/* Toggle for voice feedback */}
+          <div style={styles.toggleRow}>
+            <input
+              type="checkbox"
+              id="voiceToggle"
+              checked={voiceEnabled}
+              onChange={() => setVoiceEnabled(!voiceEnabled)}
+            />
+            <label htmlFor="voiceToggle">Enable voice feedback</label>
+          </div>
 
           {errorMsg && <p style={styles.errorMsg}>{errorMsg}</p>}
           {previewSrc && (
@@ -227,7 +257,7 @@ function App() {
         </div>
       </div>
 
-      {/* Simple fade animation keyframe */}
+      {/* Simple fade animation */}
       <style>{`
         @keyframes fade-in {
           from { opacity: 0; transform: translateY(20px); }
