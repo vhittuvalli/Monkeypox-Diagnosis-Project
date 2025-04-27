@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 
 function App() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -9,6 +9,10 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [fadeIn, setFadeIn] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [showCamera, setShowCamera] = useState(false);
+
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
 
   const styles = {
     page: {
@@ -99,6 +103,55 @@ function App() {
       alignItems: "center",
       gap: "0.5rem",
     },
+    video: {
+      width: "100%",
+      borderRadius: "8px",
+      marginTop: "1rem",
+    },
+  };
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current.play(); // Play only after metadata is loaded
+        };
+      }
+      setShowCamera(true);
+    } catch (error) {
+      console.error("Error accessing camera", error);
+      setErrorMsg("Unable to access camera. Please allow camera permissions.");
+    }
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = videoRef.current.srcObject.getTracks();
+      tracks.forEach((track) => track.stop());
+      videoRef.current.srcObject = null;
+    }
+    setShowCamera(false);
+  };
+
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (video && canvas) {
+      const context = canvas.getContext("2d");
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], "captured.png", { type: "image/png" });
+          setSelectedFile(file);
+          setPreviewSrc(URL.createObjectURL(blob));
+          setPrediction(null);
+          setConfidence(null);
+          setFadeIn(true);
+        }
+      }, "image/png");
+    }
   };
 
   const handleFileChange = (e) => {
@@ -128,7 +181,7 @@ function App() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedFile) {
-      setErrorMsg("Please select a file first!");
+      setErrorMsg("Please select or capture a photo first!");
       return;
     }
 
@@ -169,6 +222,7 @@ function App() {
     setErrorMsg("");
     setIsLoading(false);
     setFadeIn(false);
+    stopCamera(); // Stop camera too
   };
 
   return (
@@ -180,15 +234,43 @@ function App() {
       <div style={styles.container}>
         {/* Upload + Detection Section */}
         <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>📤 Upload Image for Detection</h2>
+          <h2 style={styles.sectionTitle}>📤 Upload Image or Capture Photo</h2>
           <form onSubmit={handleSubmit}>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              style={styles.input}
-            />
-            <br />
+            <div style={{ marginBottom: "1rem" }}>
+              <label>📂 Upload from device:</label><br />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                style={styles.input}
+              />
+              <br />
+              <label>📸 Take a photo:</label><br />
+              {!showCamera && (
+                <button type="button" style={styles.button} onClick={startCamera}>
+                  Open Camera
+                </button>
+              )}
+              {showCamera && (
+                <div>
+                  <video 
+                    ref={videoRef} 
+                    autoPlay 
+                    playsInline 
+                    muted 
+                    style={styles.video}
+                  ></video>
+                  <br />
+                  <button type="button" style={styles.button} onClick={capturePhoto}>
+                    Capture Photo
+                  </button>
+                  <button type="button" style={{ ...styles.button, backgroundColor: "#dc3545" }} onClick={stopCamera}>
+                    Close Camera
+                  </button>
+                  <canvas ref={canvasRef} style={{ display: "none" }} width="640" height="480"></canvas>
+                </div>
+              )}
+            </div>
             <button type="submit" style={styles.button}>
               Predict
             </button>
