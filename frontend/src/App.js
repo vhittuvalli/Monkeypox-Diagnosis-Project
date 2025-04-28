@@ -10,6 +10,7 @@ function App() {
   const [fadeIn, setFadeIn] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [showCamera, setShowCamera] = useState(false);
+  const [photoCaptured, setPhotoCaptured] = useState(false);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -65,6 +66,9 @@ function App() {
     resetButton: {
       backgroundColor: "#6c757d",
     },
+    deleteButton: {
+      backgroundColor: "#dc3545",
+    },
     previewImage: {
       maxWidth: "100%",
       maxHeight: "300px",
@@ -112,14 +116,24 @@ function App() {
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current.play(); // Play only after metadata is loaded
-        };
+      if (videoRef.current && videoRef.current.srcObject) {
+        stopCamera();
       }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      
       setShowCamera(true);
+      setPhotoCaptured(false);
+
+      // wait a little to make sure the video element has mounted
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.onloadedmetadata = () => {
+            videoRef.current.play();
+          };
+        }
+      }, 100);
     } catch (error) {
       console.error("Error accessing camera", error);
       setErrorMsg("Unable to access camera. Please allow camera permissions.");
@@ -149,9 +163,17 @@ function App() {
           setPrediction(null);
           setConfidence(null);
           setFadeIn(true);
+          stopCamera();
+          setPhotoCaptured(true);
         }
       }, "image/png");
     }
+  };
+
+  const handleDeletePhoto = () => {
+    setSelectedFile(null);
+    setPreviewSrc("");
+    setPhotoCaptured(false);
   };
 
   const handleFileChange = (e) => {
@@ -162,6 +184,8 @@ function App() {
     setConfidence(null);
     setErrorMsg("");
     setFadeIn(true);
+    stopCamera();
+    setPhotoCaptured(true);
   };
 
   const speakResult = (prediction, confidence) => {
@@ -222,7 +246,8 @@ function App() {
     setErrorMsg("");
     setIsLoading(false);
     setFadeIn(false);
-    stopCamera(); // Stop camera too
+    stopCamera();
+    setPhotoCaptured(false);
   };
 
   return (
@@ -232,7 +257,6 @@ function App() {
       </div>
 
       <div style={styles.container}>
-        {/* Upload + Detection Section */}
         <div style={styles.section}>
           <h2 style={styles.sectionTitle}>📤 Upload Image or Capture Photo</h2>
           <form onSubmit={handleSubmit}>
@@ -246,7 +270,7 @@ function App() {
               />
               <br />
               <label>📸 Take a photo:</label><br />
-              {!showCamera && (
+              {!showCamera && !photoCaptured && (
                 <button type="button" style={styles.button} onClick={startCamera}>
                   Open Camera
                 </button>
@@ -254,10 +278,10 @@ function App() {
               {showCamera && (
                 <div>
                   <video 
-                    ref={videoRef} 
-                    autoPlay 
-                    playsInline 
-                    muted 
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
                     style={styles.video}
                   ></video>
                   <br />
@@ -271,6 +295,18 @@ function App() {
                 </div>
               )}
             </div>
+
+            {photoCaptured && !showCamera && (
+              <div style={{ marginTop: "1rem" }}>
+                <button type="button" style={styles.button} onClick={startCamera}>
+                  Retake Photo
+                </button>
+                <button type="button" style={{ ...styles.button, ...styles.deleteButton }} onClick={handleDeletePhoto}>
+                  Delete Photo
+                </button>
+              </div>
+            )}
+
             <button type="submit" style={styles.button}>
               Predict
             </button>
@@ -279,7 +315,6 @@ function App() {
             </button>
           </form>
 
-          {/* Toggle for voice feedback */}
           <div style={styles.toggleRow}>
             <input
               type="checkbox"
@@ -291,10 +326,13 @@ function App() {
           </div>
 
           {errorMsg && <p style={styles.errorMsg}>{errorMsg}</p>}
+
           {previewSrc && (
-            <img src={previewSrc} alt="Preview" style={styles.previewImage} />
+            <img src={previewSrc} alt="Captured" style={styles.previewImage} />
           )}
+
           {isLoading && <p>🔄 Predicting... please wait</p>}
+
           {prediction && (
             <div style={styles.resultContainer(prediction)}>
               <h3>Prediction Result</h3>
@@ -310,46 +348,16 @@ function App() {
             </div>
           )}
         </div>
-
-        {/* Info Section */}
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>🧠 About Monkeypox</h2>
-          <p>
-            Monkeypox is a rare viral disease that belongs to the same family as smallpox. Though
-            usually less severe, it can still cause serious symptoms and requires proper medical
-            attention.
-          </p>
-          <ul>
-            <li>📍 First detected in 1958 in monkeys</li>
-            <li>🤒 Symptoms: fever, rash, swollen lymph nodes</li>
-            <li>🧬 Transmission: animal-to-human and human-to-human contact</li>
-            <li>💉 Vaccines and antivirals are available for prevention & treatment</li>
-            <li>🌍 Recent outbreaks reported in multiple countries</li>
-          </ul>
-          <p>
-            For detailed info, visit{" "}
-            <a
-              href="https://www.cdc.gov/poxvirus/monkeypox/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              CDC Monkeypox Resource
-            </a>
-          </p>
-        </div>
       </div>
 
-      {/* Simple fade animation */}
       <style>{`
         @keyframes fade-in {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
         }
-
         button:hover {
           filter: brightness(1.1);
         }
-
         a:hover {
           text-decoration: underline;
         }
